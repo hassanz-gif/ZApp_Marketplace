@@ -1,0 +1,7 @@
+name = "marketplace-pro"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "marketplace-users-db"
+database_id = "3024fc31-48c2-47c8-9e13-5ab8babf8764"

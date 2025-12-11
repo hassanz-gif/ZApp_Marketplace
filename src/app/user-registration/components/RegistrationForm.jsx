@@ -28,6 +28,7 @@ export default function RegistrationForm({ onStepChange }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalSteps = accountType === 'seller' || accountType === 'both' ? 3 : 2;
 
@@ -139,15 +140,61 @@ export default function RegistrationForm({ onStepChange }) {
     setUploadedDocuments(prev => prev?.filter(doc => doc?.id !== id));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
-    if (validateStep(totalSteps)) {
-      router?.push('/user-login');
+
+    if (!validateStep(totalSteps)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          accountType: accountType,
+          phone: formData.phone || null,
+          businessName: formData.businessName || null,
+          businessType: formData.businessType || null,
+          taxId: formData.taxId || null,
+          marketingOptIn: formData.marketingOptIn
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrors({ submit: data.error || 'Registration failed. Please try again.' });
+        return;
+      }
+
+      // Registration successful - redirect to login
+      router?.push('/user-login?registered=true');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrors({ submit: 'An error occurred. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {errors?.submit && (
+        <div className="p-4 bg-error/10 border border-error rounded-lg flex items-start space-x-3">
+          <Icon name="ExclamationCircleIcon" size={20} className="text-error flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-error">{errors?.submit}</p>
+        </div>
+      )}
       {currentStep === 1 && (
         <div className="space-y-6">
           <div>
@@ -656,10 +703,20 @@ export default function RegistrationForm({ onStepChange }) {
         ) : (
           <button
             type="submit"
-            className="inline-flex items-center px-6 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-smooth"
+            disabled={isSubmitting}
+            className="inline-flex items-center px-6 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Icon name="CheckIcon" size={20} className="mr-2" />
-            Create Account
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2"></div>
+                Creating Account...
+              </>
+            ) : (
+              <>
+                <Icon name="CheckIcon" size={20} className="mr-2" />
+                Create Account
+              </>
+            )}
           </button>
         )}
       </div>

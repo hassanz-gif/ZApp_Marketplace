@@ -35,3 +35,10 @@ jest-test-results.json
 
 # Optional: if using TurboRepo or monorepo
 turbo/
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Wrangler
+.wrangler/

@@ -49,60 +49,63 @@ export default function LoginForm({ onSubmit }) {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
+    setErrors({});
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        }),
+      });
 
-      const mockCredentials = {
-        buyer: { email: 'buyer@marketplace.com', password: 'buyer123' },
-        seller: { email: 'seller@marketplace.com', password: 'seller123' },
-        admin: { email: 'admin@marketplace.com', password: 'admin123' }
-      };
+      const data = await response.json();
 
-      let userRole = null;
-      let isValid = false;
-
-      if (formData?.email === mockCredentials?.buyer?.email && formData?.password === mockCredentials?.buyer?.password) {
-        userRole = 'buyer';
-        isValid = true;
-      } else if (formData?.email === mockCredentials?.seller?.email && formData?.password === mockCredentials?.seller?.password) {
-        userRole = 'seller';
-        isValid = true;
-      } else if (formData?.email === mockCredentials?.admin?.email && formData?.password === mockCredentials?.admin?.password) {
-        userRole = 'admin';
-        isValid = true;
+      if (!response.ok) {
+        setErrors({
+          submit: data.error || 'Invalid email or password. Please check your credentials and try again.'
+        });
+        return;
       }
 
-      if (isValid) {
-        if (formData?.rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
-        }
-        
-        if (onSubmit) {
-          onSubmit({ ...formData, role: userRole });
-        }
+      // Login successful
+      const { user } = data;
+      const userRole = user.role;
 
-        if (userRole === 'admin') {
-          router?.push('/admin-dashboard');
-        } else if (userRole === 'seller') {
-          router?.push('/seller-dashboard');
-        } else {
-          router?.push('/user-dashboard');
-        }
+      // Store user data in localStorage or sessionStorage
+      if (formData?.rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('user', JSON.stringify(user));
       } else {
-        setErrors({ 
-          submit: 'Invalid email or password. Please check your credentials and try again.' 
-        });
+        sessionStorage.setItem('user', JSON.stringify(user));
+      }
+
+      if (onSubmit) {
+        onSubmit({ ...formData, role: userRole, user });
+      }
+
+      // Redirect based on role
+      if (userRole === 'admin') {
+        router?.push('/admin-dashboard');
+      } else if (userRole === 'seller') {
+        router?.push('/seller-dashboard');
+      } else {
+        router?.push('/user-dashboard');
       }
     } catch (error) {
-      setErrors({ 
-        submit: 'An error occurred during login. Please try again.' 
+      console.error('Login error:', error);
+      setErrors({
+        submit: 'An error occurred during login. Please try again.'
       });
     } finally {
       setIsLoading(false);
@@ -134,9 +137,9 @@ export default function LoginForm({ onSubmit }) {
             placeholder="Enter your email"
             disabled={isLoading}
           />
-          <Icon 
-            name="EnvelopeIcon" 
-            size={20} 
+          <Icon
+            name="EnvelopeIcon"
+            size={20}
             className={`absolute left-3 top-1/2 -translate-y-1/2 ${
               errors?.email ? 'text-error' : 'text-muted-foreground'
             }`}
@@ -166,9 +169,9 @@ export default function LoginForm({ onSubmit }) {
             placeholder="Enter your password"
             disabled={isLoading}
           />
-          <Icon 
-            name="LockClosedIcon" 
-            size={20} 
+          <Icon
+            name="LockClosedIcon"
+            size={20}
             className={`absolute left-3 top-1/2 -translate-y-1/2 ${
               errors?.password ? 'text-error' : 'text-muted-foreground'
             }`}
@@ -201,8 +204,8 @@ export default function LoginForm({ onSubmit }) {
           />
           <span className="text-sm text-foreground">Remember me</span>
         </label>
-        <Link 
-          href="/user-registration" 
+        <Link
+          href="/user-registration"
           className="text-sm text-primary hover:text-primary/80 font-medium transition-smooth"
         >
           Forgot Password?
