@@ -8,10 +8,20 @@ import EmptyCart from './EmptyCart';
 import SavedForLater from './SavedForLater';
 import ShippingCalculator from './ShippingCalculator';
 import Icon from '@/components/ui/AppIcon';
+import { useCart } from '@/context/CartContext';
 
-export default function ShoppingCartInteractive({ initialCartItems, initialSavedItems, recommendedProducts }) {
-  const [cartItems, setCartItems] = useState(initialCartItems);
-  const [savedItems, setSavedItems] = useState(initialSavedItems);
+export default function ShoppingCartInteractive({ recommendedProducts }) {
+  const {
+    cartItems,
+    savedItems,
+    isLoading,
+    updateQuantity,
+    removeFromCart,
+    saveForLater,
+    moveToCart,
+    removeSaved
+  } = useCart();
+
   const [selectedItems, setSelectedItems] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -46,45 +56,33 @@ export default function ShoppingCartInteractive({ initialCartItems, initialSaved
   const total = subtotal + tax + shipping;
 
   const handleQuantityChange = (itemId, newQuantity) => {
-    setCartItems((prevItems) =>
-      prevItems?.map((item) =>
-        item?.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
+    updateQuantity(itemId, newQuantity);
     showNotification('Quantity updated');
   };
 
   const handleRemoveItem = (itemId) => {
-    setCartItems((prevItems) => prevItems?.filter((item) => item?.id !== itemId));
+    removeFromCart(itemId);
     setSelectedItems((prevSelected) => prevSelected?.filter((id) => id !== itemId));
     showNotification('Item removed from cart');
   };
 
   const handleSaveForLater = (itemId) => {
-    const item = cartItems?.find((i) => i?.id === itemId);
-    if (item) {
-      setSavedItems((prevItems) => [...prevItems, item]);
-      setCartItems((prevItems) => prevItems?.filter((i) => i?.id !== itemId));
-      showNotification('Item saved for later');
-    }
+    saveForLater(itemId);
+    showNotification('Item saved for later');
   };
 
   const handleMoveToWishlist = (itemId) => {
-    setCartItems((prevItems) => prevItems?.filter((item) => item?.id !== itemId));
+    removeFromCart(itemId);
     showNotification('Item moved to wishlist');
   };
 
   const handleMoveToCart = (itemId) => {
-    const item = savedItems?.find((i) => i?.id === itemId);
-    if (item) {
-      setCartItems((prevItems) => [...prevItems, { ...item, quantity: 1 }]);
-      setSavedItems((prevItems) => prevItems?.filter((i) => i?.id !== itemId));
-      showNotification('Item moved to cart');
-    }
+    moveToCart(itemId);
+    showNotification('Item moved to cart');
   };
 
   const handleRemoveSaved = (itemId) => {
-    setSavedItems((prevItems) => prevItems?.filter((item) => item?.id !== itemId));
+    removeSaved(itemId);
     showNotification('Item removed');
   };
 
@@ -113,18 +111,26 @@ export default function ShoppingCartInteractive({ initialCartItems, initialSaved
   };
 
   const handleBulkRemove = () => {
-    setCartItems((prevItems) => prevItems?.filter((item) => !selectedItems?.includes(item?.id)));
+    selectedItems.forEach(itemId => removeFromCart(itemId));
+    const count = selectedItems.length;
     setSelectedItems([]);
-    showNotification(`${selectedItems?.length} items removed from cart`);
+    showNotification(`${count} items removed from cart`);
   };
 
   const handleBulkSaveForLater = () => {
-    const itemsToSave = cartItems?.filter((item) => selectedItems?.includes(item?.id));
-    setSavedItems((prevItems) => [...prevItems, ...itemsToSave]);
-    setCartItems((prevItems) => prevItems?.filter((item) => !selectedItems?.includes(item?.id)));
+    const count = selectedItems.length;
+    selectedItems.forEach(itemId => saveForLater(itemId));
     setSelectedItems([]);
-    showNotification(`${itemsToSave?.length} items saved for later`);
+    showNotification(`${count} items saved for later`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (cartItems?.length === 0) {
     return <EmptyCart recommendedProducts={recommendedProducts} />;
@@ -243,31 +249,6 @@ export default function ShoppingCartInteractive({ initialCartItems, initialSaved
 }
 
 ShoppingCartInteractive.propTypes = {
-  initialCartItems: PropTypes?.arrayOf(
-    PropTypes?.shape({
-      id: PropTypes?.string?.isRequired,
-      name: PropTypes?.string?.isRequired,
-      price: PropTypes?.number?.isRequired,
-      quantity: PropTypes?.number?.isRequired,
-      stock: PropTypes?.number?.isRequired,
-      image: PropTypes?.string?.isRequired,
-      imageAlt: PropTypes?.string?.isRequired,
-      sellerId: PropTypes?.string?.isRequired,
-      sellerName: PropTypes?.string?.isRequired,
-      sellerVerified: PropTypes?.bool,
-      variant: PropTypes?.string,
-      estimatedDelivery: PropTypes?.string,
-    })
-  )?.isRequired,
-  initialSavedItems: PropTypes?.arrayOf(
-    PropTypes?.shape({
-      id: PropTypes?.string?.isRequired,
-      name: PropTypes?.string?.isRequired,
-      price: PropTypes?.number?.isRequired,
-      image: PropTypes?.string?.isRequired,
-      imageAlt: PropTypes?.string?.isRequired,
-    })
-  )?.isRequired,
   recommendedProducts: PropTypes?.arrayOf(
     PropTypes?.shape({
       id: PropTypes?.string?.isRequired,
@@ -277,5 +258,5 @@ ShoppingCartInteractive.propTypes = {
       image: PropTypes?.string?.isRequired,
       imageAlt: PropTypes?.string?.isRequired,
     })
-  )?.isRequired,
+  ),
 };

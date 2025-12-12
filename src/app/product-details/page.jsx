@@ -255,7 +255,7 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <Header   cartItemCount={3} notificationCount={5} />
+      <Header    notificationCount={5} />
       <div className="pt-[60px]">
         <ProductDetailsInteractive productData={mockProductData} />
       </div>

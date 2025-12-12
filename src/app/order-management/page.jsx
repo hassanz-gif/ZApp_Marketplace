@@ -225,7 +225,7 @@ export default function OrderManagementPage() {
 
   return (
     <>
-      <Header   cartItemCount={3} notificationCount={2} />
+      <Header    notificationCount={2} />
       <OrderManagementInteractive
         initialOrders={mockOrders}
         initialStats={mockStats} />

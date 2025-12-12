@@ -335,7 +335,7 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Header   cartItemCount={0} notificationCount={5} />
+      <Header    notificationCount={5} />
       <div className="pt-[60px]">
         <AdminDashboardInteractive
           metricsData={metricsData}

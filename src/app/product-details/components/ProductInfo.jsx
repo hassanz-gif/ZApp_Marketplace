@@ -3,12 +3,17 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
+import { useCart } from '@/context/CartContext';
 
 export default function ProductInfo({ product, seller }) {
+  const router = useRouter();
+  const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(product?.variants?.[0] || null);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
@@ -18,11 +23,26 @@ export default function ProductInfo({ product, seller }) {
   };
 
   const handleAddToCart = () => {
-    console.log('Added to cart:', { product, quantity, variant: selectedVariant });
+    const productData = {
+      id: product?.id || `product-${Date.now()}`,
+      name: product?.title,
+      price: product?.price,
+      stock: product?.stock,
+      image: product?.images?.[0] || product?.image,
+      alt: product?.title,
+      sellerId: seller?.id || 'seller-1',
+      sellerName: seller?.name,
+      sellerVerified: seller?.verified
+    };
+
+    addToCart(productData, quantity, selectedVariant?.name || null);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
   };
 
   const handleBuyNow = () => {
-    console.log('Buy now:', { product, quantity, variant: selectedVariant });
+    handleAddToCart();
+    router.push('/shopping-cart');
   };
 
   const toggleWishlist = () => {
@@ -143,10 +163,14 @@ export default function ProductInfo({ product, seller }) {
         <button
           onClick={handleAddToCart}
           disabled={product?.stock === 0}
-          className="flex-1 px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-smooth flex items-center justify-center space-x-2"
+          className={`flex-1 px-6 py-3 font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-smooth flex items-center justify-center space-x-2 ${
+            addedToCart
+              ? 'bg-success text-success-foreground'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
         >
-          <Icon name="ShoppingCartIcon" size={20} />
-          <span>Add to Cart</span>
+          <Icon name={addedToCart ? "CheckCircleIcon" : "ShoppingCartIcon"} size={20} />
+          <span>{addedToCart ? 'Added to Cart!' : 'Add to Cart'}</span>
         </button>
         <button
           onClick={handleBuyNow}

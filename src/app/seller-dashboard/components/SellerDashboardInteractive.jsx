@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Icon from '@/components/ui/AppIcon';
 import MetricsCard from './MetricsCard';
@@ -9,31 +9,152 @@ import ListingCard from './ListingCard';
 import OrderCard from './OrderCard';
 import MessagePreview from './MessagePreview';
 import PerformanceChart from './PerformanceChart';
+import NewListingModal from './NewListingModal';
+import EditListingModal from './EditListingModal';
+import { useAuth } from '@/context/AuthContext';
 
 export default function SellerDashboardInteractive({ initialData }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [listings, setListings] = useState(initialData?.listings);
+  const [listings, setListings] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
   const [orders, setOrders] = useState(initialData?.orders);
   const [messages, setMessages] = useState(initialData?.messages);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [isNewListingModalOpen, setIsNewListingModalOpen] = useState(false);
+  const [isEditListingModalOpen, setIsEditListingModalOpen] = useState(false);
+  const [listingToEdit, setListingToEdit] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  // Fetch seller's listings from the database
+  useEffect(() => {
+    const fetchListings = async () => {
+      if (!user?.id && !user?.email) {
+        setListingsLoading(false);
+        return;
+      }
+
+      try {
+        const sellerId = user.id || user.email;
+        const response = await fetch(`/api/products?sellerId=${encodeURIComponent(sellerId)}`);
+        const data = await response.json();
+
+        if (data.success && data.products) {
+          // Transform API response to match the listing format used in the UI
+          const transformedListings = data.products.map(product => ({
+            id: product.id,
+            title: product.name,
+            name: product.name,
+            description: product.description,
+            category: product.category_name || product.categoryId || 'General',
+            categoryId: product.category_id,
+            price: product.price,
+            originalPrice: product.original_price,
+            stock: product.stock,
+            views: product.views || 0,
+            orders: product.sold_count || 0,
+            rating: product.rating || 0,
+            reviews: product.review_count || 0,
+            status: product.is_active ? 'active' : 'inactive',
+            image: product.image,
+            imageAlt: product.image_alt || product.name,
+            location: product.location,
+            freeShipping: product.free_shipping,
+            isFeatured: product.is_featured
+          }));
+          setListings(transformedListings);
+        }
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        showNotification('Failed to load listings', 'error');
+      } finally {
+        setListingsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [user?.id, user?.email]);
 
   const handleEditListing = (listingId) => {
-    console.log('Edit listing:', listingId);
-  };
-
-  const handleDeleteListing = (listingId) => {
-    if (confirm('Are you sure you want to delete this listing?')) {
-      setListings(listings?.filter(listing => listing?.id !== listingId));
+    const listing = listings?.find(l => l?.id === listingId);
+    if (listing) {
+      setListingToEdit(listing);
+      setIsEditListingModalOpen(true);
     }
   };
 
-  const handleToggleListingStatus = (listingId) => {
-    setListings(listings?.map(listing => 
-      listing?.id === listingId 
-        ? { ...listing, status: listing?.status === 'active' ? 'inactive' : 'active' }
-        : listing
-    ));
+  const handleEditListingSuccess = (updatedProduct, listingId) => {
+    // Update the listing in the local state
+    setListings(prev => prev?.map(listing => {
+      if (listing?.id === listingId) {
+        return {
+          ...listing,
+          title: updatedProduct.name || listing.title,
+          price: updatedProduct.price || listing.price,
+          stock: updatedProduct.stock ?? listing.stock,
+          image: updatedProduct.image || listing.image,
+          category: updatedProduct.categoryId || listing.category,
+          description: updatedProduct.description || listing.description,
+          location: updatedProduct.location || listing.location,
+          freeShipping: updatedProduct.freeShipping ?? listing.freeShipping,
+          isFeatured: updatedProduct.isFeatured ?? listing.isFeatured
+        };
+      }
+      return listing;
+    }));
+    showNotification('Listing updated successfully!', 'success');
+  };
+
+  const handleDeleteListing = async (listingId) => {
+    if (confirm('Are you sure you want to delete this listing?')) {
+      try {
+        const response = await fetch(`/api/products/${listingId}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setListings(listings?.filter(listing => listing?.id !== listingId));
+          showNotification('Listing deleted successfully!', 'success');
+        } else {
+          showNotification(data.error || 'Failed to delete listing', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting listing:', error);
+        showNotification('Failed to delete listing', 'error');
+      }
+    }
+  };
+
+  const handleToggleListingStatus = async (listingId) => {
+    const listing = listings?.find(l => l?.id === listingId);
+    if (!listing) return;
+
+    const newStatus = listing.status === 'active' ? 'inactive' : 'active';
+
+    try {
+      const response = await fetch(`/api/products/${listingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: newStatus === 'active' })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setListings(listings?.map(l =>
+          l?.id === listingId
+            ? { ...l, status: newStatus }
+            : l
+        ));
+        showNotification(`Listing ${newStatus === 'active' ? 'activated' : 'deactivated'}!`, 'success');
+      } else {
+        showNotification(data.error || 'Failed to update listing status', 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling listing status:', error);
+      showNotification('Failed to update listing status', 'error');
+    }
   };
 
   const handleUpdateOrderStatus = (orderId, newStatus) => {
@@ -52,6 +173,28 @@ export default function SellerDashboardInteractive({ initialData }) {
     ));
   };
 
+  const handleNewListingSuccess = (product) => {
+    // Add the new product to the listings (transform to match listings format)
+    const newListing = {
+      id: product.id,
+      title: product.name,
+      price: product.price,
+      image: product.image,
+      category: product.categoryId || 'General',
+      status: 'active',
+      views: 0,
+      orders: 0,
+      stock: product.stock
+    };
+    setListings(prev => [newListing, ...(prev || [])]);
+    showNotification('Product listing created successfully!', 'success');
+  };
+
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const filteredListings = listings?.filter(listing => {
     const matchesSearch = listing?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase());
     const matchesFilter = filterStatus === 'all' || listing?.status === filterStatus;
@@ -68,6 +211,40 @@ export default function SellerDashboardInteractive({ initialData }) {
 
   return (
     <div className="min-h-screen bg-background pt-[60px]">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-20 right-4 z-[1040] animate-slide-in-right">
+          <div className={`px-6 py-4 rounded-lg shadow-modal flex items-center space-x-3 ${
+            notification?.type === 'success' ? 'bg-success text-success-foreground' : 'bg-error text-error-foreground'
+          }`}>
+            <Icon
+              name={notification?.type === 'success' ? 'CheckCircleIcon' : 'XCircleIcon'}
+              size={24}
+            />
+            <span className="text-sm font-medium">{notification?.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* New Listing Modal */}
+      <NewListingModal
+        isOpen={isNewListingModalOpen}
+        onClose={() => setIsNewListingModalOpen(false)}
+        onSuccess={handleNewListingSuccess}
+        sellerId={user?.id || user?.email}
+      />
+
+      {/* Edit Listing Modal */}
+      <EditListingModal
+        isOpen={isEditListingModalOpen}
+        onClose={() => {
+          setIsEditListingModalOpen(false);
+          setListingToEdit(null);
+        }}
+        onSuccess={handleEditListingSuccess}
+        listing={listingToEdit}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -148,11 +325,17 @@ export default function SellerDashboardInteractive({ initialData }) {
             <div className="bg-card border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-smooth">
+                <button
+                  onClick={() => setIsNewListingModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-smooth"
+                >
                   <Icon name="PlusIcon" size={20} />
                   <span className="text-sm font-medium">New Listing</span>
                 </button>
-                <button className="flex items-center justify-center space-x-2 px-4 py-3 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-smooth">
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 bg-muted text-foreground rounded-md hover:bg-muted/80 transition-smooth"
+                >
                   <Icon name="ClipboardDocumentListIcon" size={20} />
                   <span className="text-sm font-medium">View Orders</span>
                 </button>
@@ -227,7 +410,10 @@ export default function SellerDashboardInteractive({ initialData }) {
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
-                <button className="flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-smooth whitespace-nowrap">
+                <button
+                  onClick={() => setIsNewListingModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-smooth whitespace-nowrap"
+                >
                   <Icon name="PlusIcon" size={20} />
                   <span className="text-sm font-medium">New Listing</span>
                 </button>
@@ -235,23 +421,34 @@ export default function SellerDashboardInteractive({ initialData }) {
             </div>
 
             {/* Listings Grid */}
-            <div className="space-y-4">
-              {filteredListings?.map(listing => (
-                <ListingCard
-                  key={listing?.id}
-                  listing={listing}
-                  onEdit={handleEditListing}
-                  onDelete={handleDeleteListing}
-                  onToggleStatus={handleToggleListingStatus}
-                />
-              ))}
-            </div>
+            {listingsLoading ? (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading your listings...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredListings?.map(listing => (
+                  <ListingCard
+                    key={listing?.id}
+                    listing={listing}
+                    onEdit={handleEditListing}
+                    onDelete={handleDeleteListing}
+                    onToggleStatus={handleToggleListingStatus}
+                  />
+                ))}
+              </div>
+            )}
 
-            {filteredListings?.length === 0 && (
+            {!listingsLoading && filteredListings?.length === 0 && (
               <div className="bg-card border border-border rounded-lg p-12 text-center">
                 <Icon name="RectangleStackIcon" size={48} className="mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">No listings found</h3>
-                <p className="text-muted-foreground mb-4">Try adjusting your search or filters</p>
+                <p className="text-muted-foreground mb-4">
+                  {listings?.length === 0
+                    ? "You haven't created any listings yet. Click 'New Listing' to get started!"
+                    : "Try adjusting your search or filters"}
+                </p>
               </div>
             )}
           </div>

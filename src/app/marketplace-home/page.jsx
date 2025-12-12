@@ -309,7 +309,7 @@ export default function MarketplaceHomePage() {
 
   return (
     <>
-      <Header cartItemCount={0} notificationCount={0} />
+      <Header  notificationCount={0} />
 
       <main className="pt-[60px]">
         <MarketplaceHomeInteractive pageData={pageData} />

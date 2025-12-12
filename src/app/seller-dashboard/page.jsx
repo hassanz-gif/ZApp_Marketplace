@@ -197,7 +197,7 @@ export default function SellerDashboard() {
 
   return (
     <>
-      <Header   cartItemCount={0} notificationCount={3} />
+      <Header    notificationCount={3} />
       <SellerDashboardInteractive initialData={mockData} />
     </>);
 

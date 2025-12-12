@@ -179,7 +179,7 @@ export default function MessagingCenterPage() {
 
   return (
     <>
-      <Header   cartItemCount={3} notificationCount={2} />
+      <Header    notificationCount={2} />
       <main className="pt-[60px]">
         <MessagingInteractive
           initialConversations={mockConversations}

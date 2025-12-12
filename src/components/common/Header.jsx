@@ -4,9 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 
-export default function Header({ cartItemCount = 0, notificationCount = 0 }) {
+export default function Header({ notificationCount = 0 }) {
   const { user, isAuthenticated, userRole, logout, isLoading } = useAuth();
+  const { cartItemCount } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);

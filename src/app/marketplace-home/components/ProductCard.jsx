@@ -5,13 +5,31 @@ import PropTypes from 'prop-types';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
+import { useCart } from '@/context/CartContext';
 
 export default function ProductCard({ product }) {
+  const { addToCart } = useCart();
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const handleWishlistToggle = (e) => {
     e?.preventDefault();
     setIsWishlisted(!isWishlisted);
+  };
+
+  const handleAddToCart = (e) => {
+    e?.preventDefault();
+    const productData = {
+      id: product?.id,
+      name: product?.name,
+      price: product?.price,
+      image: product?.image,
+      alt: product?.alt,
+      location: product?.location
+    };
+    addToCart(productData, 1);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 1500);
   };
 
   return (
@@ -77,13 +95,15 @@ export default function ProductCard({ product }) {
             )}
           </div>
           <button
-            onClick={(e) => {
-              e?.preventDefault();
-            }}
-            className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-smooth"
+            onClick={handleAddToCart}
+            className={`p-2 rounded-lg transition-smooth ${
+              addedToCart
+                ? 'bg-success text-success-foreground'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
             aria-label="Add to cart"
           >
-            <Icon name="ShoppingCartIcon" size={18} />
+            <Icon name={addedToCart ? "CheckIcon" : "ShoppingCartIcon"} size={18} />
           </button>
         </div>
         

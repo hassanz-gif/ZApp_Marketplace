@@ -429,7 +429,7 @@ export default function ProductSearchResultsPage() {
 
   return (
     <>
-      <Header cartItemCount={3}
+      <Header 
         notificationCount={2} />
 
       <ProductSearchInteractive initialProducts={mockProducts} />

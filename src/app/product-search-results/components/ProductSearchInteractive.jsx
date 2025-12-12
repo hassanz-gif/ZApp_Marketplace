@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PropTypes from 'prop-types';
 import SearchBar from './SearchBar';
@@ -8,8 +8,10 @@ import FilterPanel from './FilterPanel';
 import SortControls from './SortControls';
 import ProductGrid from './ProductGrid';
 import Icon from '@/components/ui/AppIcon';
+import { useCart } from '@/context/CartContext';
 
 function ProductSearchContent({ initialProducts }) {
+  const { addToCart } = useCart();
   const searchParams = useSearchParams();
   const queryParam = searchParams?.get('q') || '';
 
@@ -23,82 +25,83 @@ function ProductSearchContent({ initialProducts }) {
     inStockOnly: false
   });
   const [sortBy, setSortBy] = useState('relevance');
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [notification, setNotification] = useState(null);
 
   const PRODUCTS_PER_PAGE = 12;
 
+  // Fetch products from API
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (filters.minPrice > 0) params.set('minPrice', filters.minPrice);
+      if (filters.maxPrice < 10000) params.set('maxPrice', filters.maxPrice);
+      if (filters.minRating > 0) params.set('minRating', filters.minRating);
+      if (filters.inStockOnly) params.set('inStockOnly', 'true');
+
+      // Map sortBy to API params
+      let sortByParam = 'created_at';
+      let sortOrder = 'DESC';
+      switch (sortBy) {
+        case 'price-low': sortByParam = 'price'; sortOrder = 'ASC'; break;
+        case 'price-high': sortByParam = 'price'; sortOrder = 'DESC'; break;
+        case 'rating': sortByParam = 'rating'; sortOrder = 'DESC'; break;
+        case 'newest': sortByParam = 'created_at'; sortOrder = 'DESC'; break;
+        case 'popular': sortByParam = 'sold_count'; sortOrder = 'DESC'; break;
+      }
+      params.set('sortBy', sortByParam);
+      params.set('sortOrder', sortOrder);
+      params.set('limit', '50');
+
+      const response = await fetch(`/api/products?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        // Transform products to match expected format
+        const transformed = data.products.map(p => ({
+          id: p.id,
+          name: p.name,
+          image: p.image,
+          imageAlt: p.imageAlt || p.name,
+          price: p.price,
+          originalPrice: p.originalPrice,
+          rating: p.rating,
+          reviewCount: p.reviewCount,
+          category: p.categoryId || 'General',
+          seller: p.seller?.name || 'ZApp Seller',
+          isVerifiedSeller: p.seller?.verified ?? true,
+          inStock: p.stock > 0,
+          isNew: false,
+          discount: p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0,
+          location: p.location
+        }));
+        setProducts(transformed);
+      } else {
+        // Fallback to initial products if API fails
+        setProducts(initialProducts);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts(initialProducts);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, filters, sortBy, initialProducts]);
+
   useEffect(() => {
-    filterAndSortProducts();
-  }, [filters, sortBy, searchQuery]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   useEffect(() => {
     loadMoreProducts();
   }, [page, products]);
-
-  const filterAndSortProducts = () => {
-    let filtered = [...initialProducts];
-
-    if (searchQuery) {
-      filtered = filtered?.filter(product =>
-        product?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-        product?.category?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-      );
-    }
-
-    if (filters?.categories?.length > 0) {
-      filtered = filtered?.filter(product =>
-        filters?.categories?.includes(product?.category)
-      );
-    }
-
-    filtered = filtered?.filter(product =>
-      product?.price >= filters?.minPrice && product?.price <= filters?.maxPrice
-    );
-
-    if (filters?.minRating > 0) {
-      filtered = filtered?.filter(product => product?.rating >= filters?.minRating);
-    }
-
-    if (filters?.location) {
-      filtered = filtered?.filter(product =>
-        product?.location?.toLowerCase()?.includes(filters?.location?.toLowerCase())
-      );
-    }
-
-    if (filters?.inStockOnly) {
-      filtered = filtered?.filter(product => product?.inStock);
-    }
-
-    switch (sortBy) {
-      case 'price-low':
-        filtered?.sort((a, b) => a?.price - b?.price);
-        break;
-      case 'price-high':
-        filtered?.sort((a, b) => b?.price - a?.price);
-        break;
-      case 'rating':
-        filtered?.sort((a, b) => b?.rating - a?.rating);
-        break;
-      case 'newest':
-        filtered?.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
-        break;
-      case 'popular':
-        filtered?.sort((a, b) => b?.reviewCount - a?.reviewCount);
-        break;
-      default:
-        break;
-    }
-
-    setProducts(filtered);
-    setPage(1);
-    setDisplayedProducts([]);
-  };
 
   const loadMoreProducts = () => {
     const startIndex = (page - 1) * PRODUCTS_PER_PAGE;
@@ -139,7 +142,21 @@ function ProductSearchContent({ initialProducts }) {
   };
 
   const handleAddToCart = (productId) => {
-    showNotification('Product added to cart!', 'success');
+    const product = initialProducts.find(p => p.id === productId);
+    if (product) {
+      const productData = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        alt: product.imageAlt,
+        sellerId: product.sellerId || 'seller-1',
+        sellerName: product.seller,
+        sellerVerified: product.isVerifiedSeller
+      };
+      addToCart(productData, 1);
+      showNotification('Product added to cart!', 'success');
+    }
   };
 
   const handleAddToWishlist = (productId) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import PropTypes from 'prop-types';
 import ImageGallery from './ImageGallery';
 import ProductInfo from './ProductInfo';
@@ -9,9 +10,79 @@ import ReviewSection from './ReviewSection';
 import RelatedProducts from './RelatedProducts';
 import Icon from '@/components/ui/AppIcon';
 
-export default function ProductDetailsInteractive({ productData }) {
+export default function ProductDetailsInteractive({ productData: initialProductData }) {
+  const searchParams = useSearchParams();
+  const productId = searchParams?.get('id');
+
+  const [productData, setProductData] = useState(initialProductData);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('details');
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // Fetch product from API if we have an ID
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productId) return;
+
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/products/${productId}`);
+        const data = await response.json();
+
+        if (data.success && data.product) {
+          const p = data.product;
+          // Transform API product to match expected format
+          setProductData({
+            product: {
+              id: p.id,
+              title: p.name,
+              price: p.price,
+              originalPrice: p.originalPrice,
+              rating: p.rating,
+              reviewCount: p.reviewCount,
+              soldCount: p.soldCount,
+              stock: p.stock,
+              freeShipping: p.freeShipping,
+              category: 'Electronics',
+              variants: [],
+              features: [
+                'High-quality construction',
+                'Fast shipping available',
+                'Customer support included'
+              ]
+            },
+            seller: {
+              id: p.seller?.id || p.sellerId,
+              name: p.seller?.name || 'ZApp Seller',
+              verified: true,
+              rating: 4.8,
+              responseRate: 98,
+              responseTime: '< 1 hour'
+            },
+            images: p.images?.length > 0 ? p.images : [p.image],
+            details: initialProductData?.details || {
+              description: p.description || 'No description available.',
+              specifications: [],
+              shipping: { freeShipping: p.freeShipping, estimatedDays: '3-7 business days' },
+              returns: { accepted: true, period: '30 days' }
+            },
+            reviews: initialProductData?.reviews || {
+              totalReviews: p.reviewCount,
+              breakdown: { 5: 60, 4: 25, 3: 10, 2: 3, 1: 2 },
+              list: []
+            },
+            relatedProducts: initialProductData?.relatedProducts || []
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId]);
 
   useEffect(() => {
     // Check if window is available (client-side only)
@@ -28,6 +99,14 @@ export default function ProductDetailsInteractive({ productData }) {
     // Cleanup
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -203,7 +203,7 @@ export default function UserDashboard() {
 
   return (
     <>
-      <Header cartItemCount={2}
+      <Header 
         notificationCount={4} />
 
       <UserDashboardInteractive initialData={mockData} />

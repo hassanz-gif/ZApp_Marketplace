@@ -104,7 +104,7 @@ export default function CheckoutProcessPage() {
 
   return (
     <>
-      <Header   cartItemCount={3} notificationCount={2} />
+      <Header    notificationCount={2} />
       <div className="pt-[60px]">
         <CheckoutInteractive initialData={mockData} />
       </div>
