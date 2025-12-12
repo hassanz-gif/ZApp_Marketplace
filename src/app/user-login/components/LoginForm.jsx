@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PropTypes from 'prop-types';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/context/AuthContext';
 
-export default function LoginForm({ onSubmit }) {
+export default function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -78,21 +79,12 @@ export default function LoginForm({ onSubmit }) {
         return;
       }
 
-      // Login successful
+      // Login successful - use auth context
       const { user } = data;
       const userRole = user.role;
 
-      // Store user data in localStorage or sessionStorage
-      if (formData?.rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-        localStorage.setItem('user', JSON.stringify(user));
-      } else {
-        sessionStorage.setItem('user', JSON.stringify(user));
-      }
-
-      if (onSubmit) {
-        onSubmit({ ...formData, role: userRole, user });
-      }
+      // Use the auth context login function
+      login(user, formData.rememberMe);
 
       // Redirect based on role
       if (userRole === 'admin') {
@@ -231,7 +223,3 @@ export default function LoginForm({ onSubmit }) {
     </form>
   );
 }
-
-LoginForm.propTypes = {
-  onSubmit: PropTypes?.func
-};

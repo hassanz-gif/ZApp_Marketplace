@@ -1,8 +1,8 @@
 import LoginInteractive from './components/LoginInteractive';
 
 export const metadata = {
-  title: 'Sign In - MarketPlace Pro',
-  description: 'Sign in to your MarketPlace Pro account to access your dashboard, manage orders, and connect with sellers.',
+  title: 'Sign In - ZApp',
+  description: 'Sign in to your ZApp account to access your dashboard, manage orders, and connect with sellers.',
 };
 
 export default function UserLoginPage() {

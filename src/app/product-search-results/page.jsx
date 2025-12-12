@@ -2,8 +2,8 @@ import Header from '@/components/common/Header';
 import ProductSearchInteractive from './components/ProductSearchInteractive';
 
 export const metadata = {
-  title: 'Product Search Results - MarketPlace Pro',
-  description: 'Find the perfect products with advanced filtering, sorting, and search capabilities on MarketPlace Pro.'
+  title: 'Product Search Results - ZApp',
+  description: 'Find the perfect products with advanced filtering, sorting, and search capabilities on ZApp.'
 };
 
 export default function ProductSearchResultsPage() {
@@ -429,10 +429,7 @@ export default function ProductSearchResultsPage() {
 
   return (
     <>
-      <Header
-        userRole="buyer"
-        isAuthenticated={true}
-        cartItemCount={3}
+      <Header cartItemCount={3}
         notificationCount={2} />
 
       <ProductSearchInteractive initialProducts={mockProducts} />

@@ -31,7 +31,7 @@ export default function LoginInteractive({ mockCredentials }) {
               </svg>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Welcome Back</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Sign in to access your MarketPlace Pro account</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Sign in to access your ZApp account</p>
           </div>
 
           <LoginForm onSubmit={handleLoginSubmit} />

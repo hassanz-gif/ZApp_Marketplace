@@ -2,7 +2,7 @@ import Header from '@/components/common/Header';
 import ShoppingCartInteractive from './components/ShoppingCartInteractive';
 
 export const metadata = {
-  title: 'Shopping Cart - MarketPlace Pro',
+  title: 'Shopping Cart - ZApp',
   description: 'Review and manage your cart items before checkout with secure payment options and fast shipping.'
 };
 
@@ -98,7 +98,7 @@ export default function ShoppingCartPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header userRole="buyer" isAuthenticated={true} cartItemCount={4} notificationCount={2} />
+      <Header   cartItemCount={4} notificationCount={2} />
       
       <main className="pt-[60px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

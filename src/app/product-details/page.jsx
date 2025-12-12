@@ -2,8 +2,8 @@ import Header from '@/components/common/Header';
 import ProductDetailsInteractive from './components/ProductDetailsInteractive';
 
 export const metadata = {
-  title: 'Product Details - MarketPlace Pro',
-  description: 'View detailed product information, specifications, reviews, and make informed purchase decisions on MarketPlace Pro'
+  title: 'Product Details - ZApp',
+  description: 'View detailed product information, specifications, reviews, and make informed purchase decisions on ZApp'
 };
 
 export default function ProductDetailsPage() {
@@ -255,7 +255,7 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <Header isAuthenticated={true} userRole="buyer" cartItemCount={3} notificationCount={5} />
+      <Header   cartItemCount={3} notificationCount={5} />
       <div className="pt-[60px]">
         <ProductDetailsInteractive productData={mockProductData} />
       </div>

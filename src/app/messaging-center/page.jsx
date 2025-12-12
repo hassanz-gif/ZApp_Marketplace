@@ -2,7 +2,7 @@ import Header from '@/components/common/Header';
 import MessagingInteractive from './components/MessagingInteractive';
 
 export const metadata = {
-  title: 'Messaging Center - MarketPlace Pro',
+  title: 'Messaging Center - ZApp',
   description: 'Secure communication between buyers and sellers with real-time chat capabilities and comprehensive conversation management'
 };
 
@@ -179,7 +179,7 @@ export default function MessagingCenterPage() {
 
   return (
     <>
-      <Header userRole="buyer" isAuthenticated={true} cartItemCount={3} notificationCount={2} />
+      <Header   cartItemCount={3} notificationCount={2} />
       <main className="pt-[60px]">
         <MessagingInteractive
           initialConversations={mockConversations}

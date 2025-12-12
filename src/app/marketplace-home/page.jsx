@@ -2,8 +2,8 @@ import Header from '@/components/common/Header';
 import MarketplaceHomeInteractive from './components/MarketplaceHomeInteractive';
 
 export const metadata = {
-  title: 'Marketplace Home - MarketPlace Pro',
-  description: 'Discover trending products, explore categories, and connect with trusted sellers on MarketPlace Pro. Your one-stop marketplace for everything you need.'
+  title: 'Marketplace Home - ZApp',
+  description: 'Discover trending products, explore categories, and connect with trusted sellers on ZApp. Your one-stop marketplace for everything you need.'
 };
 
 export default function MarketplaceHomePage() {
@@ -309,11 +309,7 @@ export default function MarketplaceHomePage() {
 
   return (
     <>
-      <Header
-        userRole={null}
-        isAuthenticated={false}
-        cartItemCount={0}
-        notificationCount={0} />
+      <Header cartItemCount={0} notificationCount={0} />
 
       <main className="pt-[60px]">
         <MarketplaceHomeInteractive pageData={pageData} />

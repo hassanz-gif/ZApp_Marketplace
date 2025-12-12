@@ -199,7 +199,7 @@ export default function RegistrationForm({ onStepChange }) {
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-semibold text-foreground mb-2">Create Your Account</h2>
-            <p className="text-sm text-muted-foreground">Join MarketPlace Pro and start your journey</p>
+            <p className="text-sm text-muted-foreground">Join ZApp and start your journey</p>
           </div>
 
           <div>

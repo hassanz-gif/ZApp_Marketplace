@@ -2,8 +2,8 @@ import Header from '@/components/common/Header';
 import SellerDashboardInteractive from './components/SellerDashboardInteractive';
 
 export const metadata = {
-  title: 'Seller Dashboard - MarketPlace Pro',
-  description: 'Manage your listings, orders, and business performance on MarketPlace Pro'
+  title: 'Seller Dashboard - ZApp',
+  description: 'Manage your listings, orders, and business performance on ZApp'
 };
 
 export default function SellerDashboard() {
@@ -197,7 +197,7 @@ export default function SellerDashboard() {
 
   return (
     <>
-      <Header userRole="seller" isAuthenticated={true} cartItemCount={0} notificationCount={3} />
+      <Header   cartItemCount={0} notificationCount={3} />
       <SellerDashboardInteractive initialData={mockData} />
     </>);
 

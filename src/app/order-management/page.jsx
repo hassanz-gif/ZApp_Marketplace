@@ -2,7 +2,7 @@ import Header from '@/components/common/Header';
 import OrderManagementInteractive from './components/OrderManagementInteractive';
 
 export const metadata = {
-  title: 'Order Management - MarketPlace Pro',
+  title: 'Order Management - ZApp',
   description: 'Track, manage, and review your marketplace orders with comprehensive order lifecycle visibility and transaction management tools.'
 };
 
@@ -225,7 +225,7 @@ export default function OrderManagementPage() {
 
   return (
     <>
-      <Header userRole="buyer" isAuthenticated={true} cartItemCount={3} notificationCount={2} />
+      <Header   cartItemCount={3} notificationCount={2} />
       <OrderManagementInteractive
         initialOrders={mockOrders}
         initialStats={mockStats} />

@@ -2,7 +2,7 @@ import Header from '@/components/common/Header';
 import CheckoutInteractive from './components/CheckoutInteractive';
 
 export const metadata = {
-  title: 'Checkout - MarketPlace Pro',
+  title: 'Checkout - ZApp',
   description: 'Complete your purchase securely with our streamlined checkout process'
 };
 
@@ -104,7 +104,7 @@ export default function CheckoutProcessPage() {
 
   return (
     <>
-      <Header isAuthenticated={true} userRole="buyer" cartItemCount={3} notificationCount={2} />
+      <Header   cartItemCount={3} notificationCount={2} />
       <div className="pt-[60px]">
         <CheckoutInteractive initialData={mockData} />
       </div>

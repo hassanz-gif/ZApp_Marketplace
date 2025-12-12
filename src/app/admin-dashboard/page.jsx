@@ -2,7 +2,7 @@ import Header from '@/components/common/Header';
 import AdminDashboardInteractive from './components/AdminDashboardInteractive';
 
 export const metadata = {
-  title: 'Admin Dashboard - MarketPlace Pro',
+  title: 'Admin Dashboard - ZApp',
   description: 'Comprehensive platform oversight enabling administrators to monitor marketplace health, manage users, and maintain system integrity effectively.'
 };
 
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Header userRole="admin" isAuthenticated={true} cartItemCount={0} notificationCount={5} />
+      <Header   cartItemCount={0} notificationCount={5} />
       <div className="pt-[60px]">
         <AdminDashboardInteractive
           metricsData={metricsData}

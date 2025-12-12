@@ -58,7 +58,7 @@ export default function MarketplaceHomeInteractive({ pageData }) {
             Start Selling Today
           </h2>
           <p className="text-lg text-white/90 mb-6 max-w-2xl mx-auto">
-            Join thousands of successful sellers on MarketPlace Pro. List your products and reach millions of buyers worldwide.
+            Join thousands of successful sellers on ZApp. List your products and reach millions of buyers worldwide.
           </p>
           <a
             href="/seller-dashboard"

@@ -2,8 +2,8 @@ import Header from '@/components/common/Header';
 import UserDashboardInteractive from './components/UserDashboardInteractive';
 
 export const metadata = {
-  title: 'My Dashboard - MarketPlace Pro',
-  description: 'Manage your account, track orders, and explore personalized recommendations on MarketPlace Pro'
+  title: 'My Dashboard - ZApp',
+  description: 'Manage your account, track orders, and explore personalized recommendations on ZApp'
 };
 
 export default function UserDashboard() {
@@ -203,10 +203,7 @@ export default function UserDashboard() {
 
   return (
     <>
-      <Header
-        userRole={mockData?.userRole}
-        isAuthenticated={true}
-        cartItemCount={2}
+      <Header cartItemCount={2}
         notificationCount={4} />
 
       <UserDashboardInteractive initialData={mockData} />

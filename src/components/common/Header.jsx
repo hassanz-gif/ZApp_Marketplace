@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
+import { useAuth } from '@/context/AuthContext';
 
-export default function Header({ userRole = null, isAuthenticated = false, cartItemCount = 0, notificationCount = 0 }) {
+export default function Header({ cartItemCount = 0, notificationCount = 0 }) {
+  const { user, isAuthenticated, userRole, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -84,7 +86,7 @@ export default function Header({ userRole = null, isAuthenticated = false, cartI
             <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M16 8V16M16 16L24 12M16 16L8 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-xl font-semibold text-foreground hidden sm:block">MarketPlace Pro</span>
+          <span className="text-xl font-semibold text-foreground hidden sm:block">ZApp</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -267,6 +269,7 @@ export default function Header({ userRole = null, isAuthenticated = false, cartI
                     <button
                       onClick={() => {
                         setIsAccountMenuOpen(false);
+                        logout();
                       }}
                       className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-error hover:bg-muted rounded-md transition-smooth"
                     >
@@ -423,7 +426,7 @@ export default function Header({ userRole = null, isAuthenticated = false, cartI
               ) : (
                 <button
                   onClick={() => {
-                    setIsMobileMenuOpen(false);
+                    setIsMobileMenuOpen(false); logout();
                   }}
                   className="w-full flex items-center space-x-3 px-4 py-3 text-error hover:bg-muted rounded-md transition-smooth"
                 >

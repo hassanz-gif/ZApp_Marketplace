@@ -1,4 +1,5 @@
 import '../styles/index.css';
+import AuthProviderWrapper from '@/components/providers/AuthProviderWrapper';
 
 export const viewport = {
   width: 'device-width',
@@ -6,8 +7,8 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'Next.js with Tailwind CSS',
-  description: 'A boilerplate project with Next.js 15 and Tailwind CSS 3.4.17',
+  title: 'ZApp - Your Marketplace',
+  description: 'ZApp - Your one-stop marketplace for everything you need',
   icons: {
     icon: [
       { url: '/favicon.ico', type: 'image/x-icon' }
@@ -18,10 +19,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}
-
-        <script type="module" async src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fmarketplac4625back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.10" />
-        <script type="module" defer src="https://static.rocket.new/rocket-shot.js?v=0.0.1" /></body>
+      <body>
+        <AuthProviderWrapper>
+          {children}
+        </AuthProviderWrapper>
+      </body>
     </html>
   );
 }
