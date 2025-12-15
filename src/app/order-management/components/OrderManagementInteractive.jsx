@@ -9,11 +9,15 @@ import OrderFilters from './OrderFilters';
 import OrderCard from './OrderCard';
 import BulkActions from './BulkActions';
 import ReturnRequestModal from './ReturnRequestModal';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OrderManagementInteractive({ initialOrders, initialStats }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [allOrders, setAllOrders] = useState(initialOrders);
   const [orders, setOrders] = useState(initialOrders);
   const [stats, setStats] = useState(initialStats);
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     status: 'all',
     dateRange: 'all',
@@ -26,12 +30,87 @@ export default function OrderManagementInteractive({ initialOrders, initialStats
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Fetch orders from database
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id && !user?.email) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const buyerId = user.id || user.email;
+        const response = await fetch(`/api/orders?buyerId=${encodeURIComponent(buyerId)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Transform API response to match the order format used in the UI
+          const transformedOrders = (data.orders || []).map(order => ({
+            id: order.id,
+            orderNumber: `MP2025-${String(order.orderNumber).padStart(6, '0')}`,
+            orderDate: new Date(order.createdAt).toLocaleDateString(),
+            status: order.status,
+            total: order.total,
+            items: (order.items || []).map(item => ({
+              id: item.id,
+              name: item.productName,
+              image: item.productImage,
+              alt: item.productName,
+              seller: order.seller || 'ZApp Seller',
+              quantity: item.quantity,
+              price: item.unitPrice
+            })),
+            shippingAddress: order.shippingAddress || 'Address on file',
+            paymentMethod: 'Payment on file',
+            trackingNumber: order.trackingNumber,
+            estimatedDelivery: getEstimatedDelivery(order.status, order.createdAt),
+            returnEligible: order.status === 'delivered'
+          }));
+
+          if (transformedOrders.length > 0) {
+            setAllOrders(transformedOrders);
+            setOrders(transformedOrders);
+          }
+
+          if (data.stats) {
+            setStats(data.stats);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        // Keep using initialOrders on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user?.id, user?.email]);
+
+  // Helper function to get estimated delivery text
+  function getEstimatedDelivery(status, createdAt) {
+    const orderDate = new Date(createdAt);
+    const deliveryDate = new Date(orderDate);
+    deliveryDate.setDate(deliveryDate.getDate() + 7);
+
+    switch (status) {
+      case 'delivered':
+        return `Delivered on ${deliveryDate.toLocaleDateString()}`;
+      case 'shipped':
+        return `Expected by ${deliveryDate.toLocaleDateString()}`;
+      case 'cancelled':
+        return 'Order cancelled';
+      default:
+        return `Expected by ${deliveryDate.toLocaleDateString()}`;
+    }
+  }
+
   useEffect(() => {
     filterAndSortOrders();
-  }, [filters, sortBy]);
+  }, [filters, sortBy, allOrders]);
 
   const filterAndSortOrders = () => {
-    let filtered = [...initialOrders];
+    let filtered = [...allOrders];
 
     if (filters?.status !== 'all') {
       filtered = filtered?.filter(order => order?.status === filters?.status);
@@ -60,7 +139,7 @@ export default function OrderManagementInteractive({ initialOrders, initialStats
   };
 
   const handleReorder = (orderId) => {
-    const order = initialOrders?.find(o => o?.id === orderId);
+    const order = allOrders?.find(o => o?.id === orderId);
     if (order) {
       showSuccess(`${order?.items?.length} items added to cart`);
       setTimeout(() => router?.push('/shopping-cart'), 1500);
@@ -72,7 +151,7 @@ export default function OrderManagementInteractive({ initialOrders, initialStats
   };
 
   const handleRequestReturn = (orderId) => {
-    const order = initialOrders?.find(o => o?.id === orderId);
+    const order = allOrders?.find(o => o?.id === orderId);
     setSelectedOrderForReturn(order);
     setIsReturnModalOpen(true);
   };
@@ -193,7 +272,12 @@ export default function OrderManagementInteractive({ initialOrders, initialStats
         </div>
 
         {/* Orders List */}
-        {orders?.length > 0 ? (
+        {isLoading ? (
+          <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading your orders...</p>
+          </div>
+        ) : orders?.length > 0 ? (
           <div className="space-y-4">
             {orders?.map((order) => (
               <div key={order?.id} className="relative">
@@ -222,7 +306,7 @@ export default function OrderManagementInteractive({ initialOrders, initialStats
             <Icon name="ShoppingBagIcon" size={48} className="text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">No orders found</h3>
             <p className="text-muted-foreground mb-6">
-              {filters?.status !== 'all' || filters?.search ?'Try adjusting your filters to see more results' :'Start shopping to see your orders here'}
+              {filters?.status !== 'all' || filters?.search ? 'Try adjusting your filters to see more results' : 'Start shopping to see your orders here'}
             </p>
             <button
               onClick={() => router?.push('/marketplace-home')}

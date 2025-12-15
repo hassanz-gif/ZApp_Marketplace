@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getAllCategories } from '@/lib/db';
+import { getAllCategories, getCategoriesWithCounts } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/categories - Get all categories
-export async function GET() {
+export async function GET(request) {
   try {
-    const categories = await getAllCategories();
+    const { searchParams } = new URL(request.url);
+    const withCounts = searchParams.get('withCounts') === 'true';
+
+    const categories = withCounts
+      ? await getCategoriesWithCounts()
+      : await getAllCategories();
 
     return NextResponse.json({
       success: true,

@@ -81,3 +81,75 @@ CREATE TABLE IF NOT EXISTS product_features (
   sort_order INTEGER DEFAULT 0,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
+
+-- Orders table
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY,
+  order_number INTEGER UNIQUE NOT NULL,
+  buyer_id TEXT NOT NULL,
+  seller_id TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  subtotal REAL NOT NULL,
+  shipping_cost REAL DEFAULT 0,
+  tax REAL DEFAULT 0,
+  total REAL NOT NULL,
+  shipping_address TEXT,
+  shipping_city TEXT,
+  shipping_state TEXT,
+  shipping_zip TEXT,
+  shipping_country TEXT DEFAULT 'USA',
+  tracking_number TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (buyer_id) REFERENCES users(id),
+  FOREIGN KEY (seller_id) REFERENCES users(id)
+);
+
+-- Indexes for orders
+CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_seller ON orders(seller_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+
+-- Order items table
+CREATE TABLE IF NOT EXISTS order_items (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  product_name TEXT NOT NULL,
+  product_image TEXT,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price REAL NOT NULL,
+  total_price REAL NOT NULL,
+  variant TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Index for order items
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+
+-- Messages table for buyer-seller communication
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  sender_id TEXT NOT NULL,
+  receiver_id TEXT NOT NULL,
+  order_id TEXT,
+  subject TEXT,
+  content TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (sender_id) REFERENCES users(id),
+  FOREIGN KEY (receiver_id) REFERENCES users(id),
+  FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+-- Indexes for messages
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_order ON messages(order_id);
+CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, is_read);

@@ -18,8 +18,14 @@ export default function SellerDashboardInteractive({ initialData }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [listings, setListings] = useState([]);
   const [listingsLoading, setListingsLoading] = useState(true);
-  const [orders, setOrders] = useState(initialData?.orders);
-  const [messages, setMessages] = useState(initialData?.messages);
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isNewListingModalOpen, setIsNewListingModalOpen] = useState(false);
@@ -75,6 +81,129 @@ export default function SellerDashboardInteractive({ initialData }) {
 
     fetchListings();
   }, [user?.id, user?.email]);
+
+  // Fetch seller statistics from the database
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.id && !user?.email) {
+        setStatsLoading(false);
+        return;
+      }
+
+      try {
+        const sellerId = user.id || user.email;
+        const response = await fetch(`/api/seller/stats?sellerId=${encodeURIComponent(sellerId)}`);
+        const data = await response.json();
+
+        if (data.success && data.stats) {
+          setStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching seller stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [user?.id, user?.email]);
+
+  // Fetch seller's orders from the database
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id && !user?.email) {
+        setOrdersLoading(false);
+        return;
+      }
+
+      try {
+        const sellerId = user.id || user.email;
+        const response = await fetch(`/api/seller/orders?sellerId=${encodeURIComponent(sellerId)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Transform API response to match the order format used in the UI
+          const transformedOrders = (data.orders || []).map(order => ({
+            id: order.orderNumber || order.id,
+            customer: order.customer,
+            items: order.itemCount || order.items?.length || 1,
+            total: order.total,
+            status: order.status,
+            date: order.date,
+            shippingAddress: order.shippingAddress
+          }));
+          setOrders(transformedOrders);
+          setPendingOrdersCount(data.pagination?.pending || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        // Keep using initialData on error
+        if (initialData?.orders) {
+          setOrders(initialData.orders);
+        }
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user?.id, user?.email, initialData?.orders]);
+
+  // Fetch seller's messages from the database
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!user?.id && !user?.email) {
+        setMessagesLoading(false);
+        return;
+      }
+
+      try {
+        const sellerId = user.id || user.email;
+        const response = await fetch(`/api/seller/messages?sellerId=${encodeURIComponent(sellerId)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Transform API response to match the message format used in the UI
+          const transformedMessages = (data.messages || []).map(msg => ({
+            id: msg.id,
+            sender: msg.sender,
+            preview: msg.preview || msg.content,
+            time: msg.time,
+            orderId: msg.orderNumber || msg.orderId,
+            unread: msg.unread
+          }));
+          setMessages(transformedMessages);
+          setUnreadMessagesCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        // Keep using initialData on error
+        if (initialData?.messages) {
+          setMessages(initialData.messages);
+        }
+      } finally {
+        setMessagesLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [user?.id, user?.email, initialData?.messages]);
+
+  // Refresh stats when listings change
+  const refreshStats = async () => {
+    if (!user?.id && !user?.email) return;
+
+    try {
+      const sellerId = user.id || user.email;
+      const response = await fetch(`/api/seller/stats?sellerId=${encodeURIComponent(sellerId)}`);
+      const data = await response.json();
+      if (data.success && data.stats) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error refreshing stats:', error);
+    }
+  };
 
   const handleEditListing = (listingId) => {
     const listing = listings?.find(l => l?.id === listingId);
@@ -157,20 +286,51 @@ export default function SellerDashboardInteractive({ initialData }) {
     }
   };
 
-  const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setOrders(orders?.map(order =>
-      order?.id === orderId
-        ? { ...order, status: newStatus }
-        : order
-    ));
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const response = await fetch('/api/seller/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, status: newStatus })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setOrders(orders?.map(order =>
+          order?.id === orderId
+            ? { ...order, status: newStatus }
+            : order
+        ));
+        showNotification(`Order status updated to ${newStatus}!`, 'success');
+      } else {
+        showNotification(data.error || 'Failed to update order status', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      showNotification('Failed to update order status', 'error');
+    }
   };
 
-  const handleMarkMessageAsRead = (messageId) => {
-    setMessages(messages?.map(message =>
-      message?.id === messageId
-        ? { ...message, unread: false }
-        : message
-    ));
+  const handleMarkMessageAsRead = async (messageId) => {
+    try {
+      const response = await fetch('/api/seller/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setMessages(messages?.map(message =>
+          message?.id === messageId
+            ? { ...message, unread: false }
+            : message
+        ));
+        setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
   };
 
   const handleNewListingSuccess = (product) => {
@@ -184,10 +344,13 @@ export default function SellerDashboardInteractive({ initialData }) {
       status: 'active',
       views: 0,
       orders: 0,
-      stock: product.stock
+      stock: product.stock,
+      rating: 0,
+      reviews: 0
     };
     setListings(prev => [newListing, ...(prev || [])]);
     showNotification('Product listing created successfully!', 'success');
+    refreshStats(); // Refresh stats after creating a new listing
   };
 
   const showNotification = (message, type) => {
@@ -204,8 +367,8 @@ export default function SellerDashboardInteractive({ initialData }) {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'ChartBarIcon' },
     { id: 'listings', label: 'Listings', icon: 'RectangleStackIcon', badge: listings?.length },
-    { id: 'orders', label: 'Orders', icon: 'ShoppingBagIcon', badge: orders?.filter(o => o?.status === 'pending')?.length },
-    { id: 'messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', badge: messages?.filter(m => m?.unread)?.length },
+    { id: 'orders', label: 'Orders', icon: 'ShoppingBagIcon', badge: pendingOrdersCount || orders?.filter(o => o?.status === 'pending')?.length },
+    { id: 'messages', label: 'Messages', icon: 'ChatBubbleLeftRightIcon', badge: unreadMessagesCount || messages?.filter(m => m?.unread)?.length },
     { id: 'analytics', label: 'Analytics', icon: 'ChartPieIcon' }
   ];
 
@@ -281,38 +444,47 @@ export default function SellerDashboardInteractive({ initialData }) {
           <div className="space-y-8">
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <MetricsCard
-                title="Total Revenue"
-                value={`$${initialData?.metrics?.totalRevenue?.toLocaleString()}`}
-                change="+12.5%"
-                changeType="positive"
-                icon="CurrencyDollarIcon"
-                trend="Best month this quarter"
-              />
-              <MetricsCard
-                title="Total Orders"
-                value={initialData?.metrics?.totalOrders?.toString()}
-                change="+8.3%"
-                changeType="positive"
-                icon="ShoppingBagIcon"
-                trend="45 pending orders"
-              />
-              <MetricsCard
-                title="Active Listings"
-                value={initialData?.metrics?.activeListings?.toString()}
-                change="-2"
-                changeType="negative"
-                icon="RectangleStackIcon"
-                trend="3 listings need attention"
-              />
-              <MetricsCard
-                title="Conversion Rate"
-                value={`${initialData?.metrics?.conversionRate}%`}
-                change="+1.2%"
-                changeType="positive"
-                icon="ChartBarIcon"
-                trend="Above category average"
-              />
+              {statsLoading ? (
+                <div className="col-span-full flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <span className="ml-3 text-muted-foreground">Loading metrics...</span>
+                </div>
+              ) : (
+                <>
+                  <MetricsCard
+                    title="Total Revenue"
+                    value={`$${(stats?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    change={stats?.totalRevenue > 0 ? "+Revenue" : "No sales yet"}
+                    changeType={stats?.totalRevenue > 0 ? "positive" : "neutral"}
+                    icon="CurrencyDollarIcon"
+                    trend={`${stats?.totalSold || 0} items sold`}
+                  />
+                  <MetricsCard
+                    title="Total Sold"
+                    value={(stats?.totalSold || 0).toString()}
+                    change={stats?.totalSold > 0 ? "Items sold" : "No sales yet"}
+                    changeType={stats?.totalSold > 0 ? "positive" : "neutral"}
+                    icon="ShoppingBagIcon"
+                    trend={`$${(stats?.averagePrice || 0).toFixed(2)} avg price`}
+                  />
+                  <MetricsCard
+                    title="Active Listings"
+                    value={(stats?.activeListings || 0).toString()}
+                    change={stats?.totalListings > stats?.activeListings ? `${stats.totalListings - stats.activeListings} inactive` : "All active"}
+                    changeType={stats?.activeListings > 0 ? "positive" : "neutral"}
+                    icon="RectangleStackIcon"
+                    trend={`${stats?.totalStock || 0} total units in stock`}
+                  />
+                  <MetricsCard
+                    title="Total Stock"
+                    value={(stats?.totalStock || 0).toString()}
+                    change="Units available"
+                    changeType={stats?.totalStock > 10 ? "positive" : stats?.totalStock > 0 ? "warning" : "negative"}
+                    icon="CubeIcon"
+                    trend={`Across ${stats?.activeListings || 0} listings`}
+                  />
+                </>
+              )}
             </div>
 
             {/* Charts */}
@@ -457,30 +629,56 @@ export default function SellerDashboardInteractive({ initialData }) {
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders?.map(order => (
-                <OrderCard
-                  key={order?.id}
-                  order={order}
-                  onUpdateStatus={handleUpdateOrderStatus}
-                />
-              ))}
-            </div>
+            {ordersLoading ? (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading orders...</p>
+              </div>
+            ) : orders?.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orders?.map(order => (
+                  <OrderCard
+                    key={order?.id}
+                    order={order}
+                    onUpdateStatus={handleUpdateOrderStatus}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <Icon name="ShoppingBagIcon" size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No orders yet</h3>
+                <p className="text-muted-foreground">Orders from customers will appear here.</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {messages?.map(message => (
-                <MessagePreview
-                  key={message?.id}
-                  message={message}
-                  onMarkAsRead={handleMarkMessageAsRead}
-                />
-              ))}
-            </div>
+            {messagesLoading ? (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading messages...</p>
+              </div>
+            ) : messages?.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {messages?.map(message => (
+                  <MessagePreview
+                    key={message?.id}
+                    message={message}
+                    onMarkAsRead={handleMarkMessageAsRead}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <Icon name="ChatBubbleLeftRightIcon" size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No messages</h3>
+                <p className="text-muted-foreground">Messages from customers will appear here.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -495,21 +693,27 @@ export default function SellerDashboardInteractive({ initialData }) {
             <div className="bg-card border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Top Performing Products</h3>
               <div className="space-y-4">
-                {listings?.sort((a, b) => b?.orders - a?.orders)?.slice(0, 5)?.map((listing, index) => (
-                    <div key={listing?.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                {(stats?.topProducts?.length > 0 ? stats.topProducts : listings?.sort((a, b) => (b?.orders || 0) - (a?.orders || 0))?.slice(0, 5))?.map((product, index) => (
+                    <div key={product?.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
                       <div className="flex items-center space-x-4">
                         <span className="text-2xl font-bold text-muted-foreground">#{index + 1}</span>
                         <div>
-                          <h4 className="text-sm font-semibold text-foreground">{listing?.title}</h4>
-                          <p className="text-xs text-muted-foreground">{listing?.category}</p>
+                          <h4 className="text-sm font-semibold text-foreground">{product?.name || product?.title}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {product?.rating > 0 && <span className="text-warning">★ {product?.rating?.toFixed(1)}</span>}
+                            {product?.reviewCount > 0 && <span className="ml-1">({product?.reviewCount} reviews)</span>}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-foreground">{listing?.orders} orders</p>
-                        <p className="text-xs text-muted-foreground">${(listing?.price * listing?.orders)?.toLocaleString()} revenue</p>
+                        <p className="text-sm font-bold text-foreground">{product?.soldCount || product?.orders || 0} sold</p>
+                        <p className="text-xs text-muted-foreground">${(product?.revenue || (product?.price * (product?.soldCount || product?.orders || 0)))?.toLocaleString()} revenue</p>
                       </div>
                     </div>
                   ))}
+                {(!stats?.topProducts || stats.topProducts.length === 0) && (!listings || listings.length === 0) && (
+                  <p className="text-center text-muted-foreground py-4">No products yet. Create your first listing to see performance data.</p>
+                )}
               </div>
             </div>
           </div>

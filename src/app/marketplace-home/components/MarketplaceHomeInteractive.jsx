@@ -9,10 +9,31 @@ import ProductSection from './ProductSection';
 import FeaturedSellers from './FeaturedSellers';
 import LiveActivity from './LiveActivity';
 
+// Default icon mapping for categories
+const categoryIcons = {
+  'electronics': 'ComputerDesktopIcon',
+  'fashion': 'SparklesIcon',
+  'home-garden': 'HomeIcon',
+  'home-kitchen': 'HomeIcon',
+  'sports': 'TrophyIcon',
+  'sports-outdoors': 'TrophyIcon',
+  'books': 'BookOpenIcon',
+  'books-media': 'BookOpenIcon',
+  'toys': 'PuzzlePieceIcon',
+  'toys-games': 'PuzzlePieceIcon',
+  'health-beauty': 'HeartIcon',
+  'automotive': 'TruckIcon'
+};
+
 export default function MarketplaceHomeInteractive({ pageData }) {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [featuredSellers, setFeaturedSellers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [sellersLoading, setSellersLoading] = useState(true);
 
+  // Fetch products from database
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -29,6 +50,49 @@ export default function MarketplaceHomeInteractive({ pageData }) {
     };
 
     fetchProducts();
+  }, []);
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories?withCounts=true');
+        const data = await response.json();
+        if (data.success && data.categories.length > 0) {
+          // Map categories with icons
+          const categoriesWithIcons = data.categories.map(cat => ({
+            ...cat,
+            icon: cat.icon || categoryIcons[cat.slug] || 'TagIcon'
+          }));
+          setCategories(categoriesWithIcons);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch featured sellers from database
+  useEffect(() => {
+    const fetchFeaturedSellers = async () => {
+      try {
+        const response = await fetch('/api/sellers/featured?limit=4');
+        const data = await response.json();
+        if (data.success && data.sellers.length > 0) {
+          setFeaturedSellers(data.sellers);
+        }
+      } catch (error) {
+        console.error('Error fetching featured sellers:', error);
+      } finally {
+        setSellersLoading(false);
+      }
+    };
+
+    fetchFeaturedSellers();
   }, []);
 
   // Transform API products to match the expected format for ProductCard
@@ -52,13 +116,19 @@ export default function MarketplaceHomeInteractive({ pageData }) {
   const recommendedProducts = transformProducts(products.filter(p => !p.isFeatured).slice(0, 5));
   const popularNearby = transformProducts(products.slice(5, 10));
 
+  // Use database categories if available, otherwise fall back to pageData
+  const displayCategories = categories.length > 0 ? categories : pageData?.categories;
+
+  // Use database sellers if available, otherwise fall back to pageData
+  const displaySellers = featuredSellers.length > 0 ? featuredSellers : pageData?.featuredSellers;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <HeroBanner banners={pageData?.banners} />
 
         <div className="my-12">
-          <SearchBar categories={pageData?.categories} />
+          <SearchBar categories={displayCategories} />
         </div>
 
         <LiveActivity activities={pageData?.liveActivities} />
@@ -67,7 +137,13 @@ export default function MarketplaceHomeInteractive({ pageData }) {
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
             Browse by Category
           </h2>
-          <CategoryGrid categories={pageData?.categories} />
+          {categoriesLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <CategoryGrid categories={displayCategories} />
+          )}
         </section>
 
         {isLoading ? (
@@ -88,7 +164,13 @@ export default function MarketplaceHomeInteractive({ pageData }) {
               viewAllLink="/user-dashboard"
             />
 
-            <FeaturedSellers sellers={pageData?.featuredSellers} />
+            {sellersLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <FeaturedSellers sellers={displaySellers} />
+            )}
 
             <ProductSection
               title="Popular Nearby"

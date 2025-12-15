@@ -4,20 +4,54 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Icon from '@/components/ui/AppIcon';
 
-export default function FilterPanel({ 
-  filters, 
-  onFilterChange, 
+// Default categories as fallback
+const defaultCategories = [
+  'Electronics',
+  'Fashion',
+  'Home & Garden',
+  'Sports & Outdoors',
+  'Books & Media',
+  'Toys & Games',
+  'Health & Beauty',
+  'Automotive'
+];
+
+export default function FilterPanel({
+  filters,
+  onFilterChange,
   resultCount,
   isMobileFilterOpen,
-  onMobileFilterClose 
+  onMobileFilterClose
 }) {
   const [localFilters, setLocalFilters] = useState(filters);
   const [priceRange, setPriceRange] = useState([filters?.minPrice, filters?.maxPrice]);
+  const [categories, setCategories] = useState(defaultCategories);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     setLocalFilters(filters);
     setPriceRange([filters?.minPrice, filters?.maxPrice]);
   }, [filters]);
+
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories?withCounts=true');
+        const data = await response.json();
+        if (data.success && data.categories.length > 0) {
+          setCategories(data.categories.map(cat => cat.name));
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Keep using default categories on error
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleCategoryChange = (category) => {
     const updatedCategories = localFilters?.categories?.includes(category)
@@ -77,17 +111,6 @@ export default function FilterPanel({
     onFilterChange(resetFilters);
   };
 
-  const categories = [
-    'Electronics',
-    'Fashion',
-    'Home & Garden',
-    'Sports & Outdoors',
-    'Books & Media',
-    'Toys & Games',
-    'Health & Beauty',
-    'Automotive'
-  ];
-
   const ratings = [5, 4, 3, 2, 1];
 
   const filterContent = (
@@ -111,24 +134,31 @@ export default function FilterPanel({
       {/* Categories */}
       <div className="border-t border-border pt-6">
         <h3 className="text-sm font-semibold text-foreground mb-3">Categories</h3>
-        <div className="space-y-2">
-          {categories?.map((category) => (
-            <label
-              key={category}
-              className="flex items-center space-x-3 cursor-pointer group"
-            >
-              <input
-                type="checkbox"
-                checked={localFilters?.categories?.includes(category)}
-                onChange={() => handleCategoryChange(category)}
-                className="w-4 h-4 text-primary border-input rounded focus:ring-2 focus:ring-ring transition-smooth"
-              />
-              <span className="text-sm text-foreground group-hover:text-primary transition-smooth">
-                {category}
-              </span>
-            </label>
-          ))}
-        </div>
+        {categoriesLoading ? (
+          <div className="flex items-center space-x-2 py-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <span className="text-sm text-muted-foreground">Loading...</span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {categories?.map((category) => (
+              <label
+                key={category}
+                className="flex items-center space-x-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  checked={localFilters?.categories?.includes(category)}
+                  onChange={() => handleCategoryChange(category)}
+                  className="w-4 h-4 text-primary border-input rounded focus:ring-2 focus:ring-ring transition-smooth"
+                />
+                <span className="text-sm text-foreground group-hover:text-primary transition-smooth">
+                  {category}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Price Range */}

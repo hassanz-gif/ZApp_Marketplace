@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Header from '@/components/common/Header';
 import ProductDetailsInteractive from './components/ProductDetailsInteractive';
 
@@ -5,6 +6,22 @@ export const metadata = {
   title: 'Product Details - ZApp',
   description: 'View detailed product information, specifications, reviews, and make informed purchase decisions on ZApp'
 };
+
+function ProductDetailsContent({ mockProductData }) {
+  return (
+    <div className="pt-[60px]">
+      <ProductDetailsInteractive productData={mockProductData} />
+    </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="pt-[60px] min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+  );
+}
 
 export default function ProductDetailsPage() {
   const mockProductData = {
@@ -255,10 +272,10 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <Header    notificationCount={5} />
-      <div className="pt-[60px]">
-        <ProductDetailsInteractive productData={mockProductData} />
-      </div>
-    </>);
-
+      <Header notificationCount={5} />
+      <Suspense fallback={<LoadingFallback />}>
+        <ProductDetailsContent mockProductData={mockProductData} />
+      </Suspense>
+    </>
+  );
 }
