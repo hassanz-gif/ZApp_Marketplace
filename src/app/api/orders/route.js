@@ -54,11 +54,14 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
+    console.log('Creating order with data:', JSON.stringify(body, null, 2));
+
     const { buyerId, sellerId, items, shippingAddress, shippingCity, shippingState, shippingZip, subtotal, shippingCost, tax, total } = body;
 
     if (!buyerId || !sellerId || !items || items.length === 0) {
+      console.log('Validation failed:', { buyerId, sellerId, itemsLength: items?.length });
       return NextResponse.json(
-        { success: false, error: 'Buyer ID, seller ID, and items are required' },
+        { success: false, error: `Validation failed: buyerId=${!!buyerId}, sellerId=${!!sellerId}, items=${items?.length || 0}` },
         { status: 400 }
       );
     }
@@ -78,14 +81,16 @@ export async function POST(request) {
       status: 'pending'
     });
 
+    console.log('Order created successfully:', order);
+
     return NextResponse.json({
       success: true,
       order
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('Error creating order:', error.message, error.stack);
     return NextResponse.json(
-      { success: false, error: 'Failed to create order' },
+      { success: false, error: `Failed to create order: ${error.message}` },
       { status: 500 }
     );
   }
