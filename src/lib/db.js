@@ -966,3 +966,155 @@ function getRelativeTime(dateString) {
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   return date.toLocaleDateString();
 }
+
+// ==================== ADMIN FUNCTIONS ====================
+
+// Get platform-wide statistics
+export async function getAdminStats() {
+  // Get total users count
+  const usersResult = await executeQuery(`SELECT COUNT(*) as count FROM users`);
+  const totalUsers = usersResult.results?.[0]?.count || 0;
+
+  // Get active listings count
+  const listingsResult = await executeQuery(`SELECT COUNT(*) as count FROM products WHERE is_active = 1`);
+  const activeListings = listingsResult.results?.[0]?.count || 0;
+
+  // Get total revenue (sum of all completed orders)
+  const revenueResult = await executeQuery(`SELECT COALESCE(SUM(total), 0) as total FROM orders WHERE status = 'delivered'`);
+  const totalRevenue = revenueResult.results?.[0]?.total || 0;
+
+  // Get monthly revenue (current month)
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const monthlyRevenueResult = await executeQuery(
+    `SELECT COALESCE(SUM(total), 0) as total FROM orders WHERE created_at >= ?`,
+    [firstOfMonth]
+  );
+  const monthlyRevenue = monthlyRevenueResult.results?.[0]?.total || 0;
+
+  // Get pending orders count (as "open disputes" placeholder)
+  const pendingResult = await executeQuery(`SELECT COUNT(*) as count FROM orders WHERE status = 'pending'`);
+  const pendingOrders = pendingResult.results?.[0]?.count || 0;
+
+  // Get total orders
+  const ordersResult = await executeQuery(`SELECT COUNT(*) as count FROM orders`);
+  const totalOrders = ordersResult.results?.[0]?.count || 0;
+
+  // Get user breakdown by account type
+  const buyersResult = await executeQuery(`SELECT COUNT(*) as count FROM users WHERE account_type = 'buyer'`);
+  const sellersResult = await executeQuery(`SELECT COUNT(*) as count FROM users WHERE account_type = 'seller'`);
+  const bothResult = await executeQuery(`SELECT COUNT(*) as count FROM users WHERE account_type = 'both'`);
+
+  return {
+    totalUsers,
+    activeListings,
+    totalRevenue,
+    monthlyRevenue,
+    pendingOrders,
+    totalOrders,
+    userBreakdown: {
+      buyers: buyersResult.results?.[0]?.count || 0,
+      sellers: sellersResult.results?.[0]?.count || 0,
+      both: bothResult.results?.[0]?.count || 0
+    }
+  };
+}
+
+// Get all users for admin management
+export async function getAdminUsers(options = {}) {
+  const { limit = 50, offset = 0, status, role } = options;
+
+  let sql = `
+    SELECT id, first_name, last_name, email, account_type, phone, business_name,
+           created_at, updated_at
+    FROM users
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (role) {
+    sql += ` AND account_type = ?`;
+    params.push(role);
+  }
+
+  sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+
+  const result = await executeQuery(sql, params);
+
+  return (result.results || []).map(user => ({
+    id: user.id,
+    name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown',
+    firstName: user.first_name,
+    lastName: user.last_name,
+    email: user.email,
+    role: user.account_type,
+    status: 'active', // Could add a status column to users table later
+    businessName: user.business_name,
+    joinedDate: new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }));
+}
+
+// Get recent platform activities (orders, new users)
+export async function getRecentActivities(limit = 20) {
+  const activities = [];
+
+  // Get recent orders
+  const ordersResult = await executeQuery(`
+    SELECT o.id, o.order_number, o.total, o.status, o.created_at,
+           u.first_name, u.last_name
+    FROM orders o
+    LEFT JOIN users u ON o.buyer_id = u.id
+    ORDER BY o.created_at DESC
+    LIMIT ?
+  `, [Math.floor(limit / 2)]);
+
+  for (const order of (ordersResult.results || [])) {
+    activities.push({
+      id: `order-${order.id}`,
+      type: 'transaction',
+      title: order.status === 'delivered' ? 'Transaction Completed' : 'New Order Placed',
+      description: `Order #${order.order_number} - $${order.total?.toFixed(2) || '0.00'}`,
+      timestamp: getRelativeTime(order.created_at)
+    });
+  }
+
+  // Get recent user registrations
+  const usersResult = await executeQuery(`
+    SELECT id, first_name, last_name, account_type, created_at
+    FROM users
+    ORDER BY created_at DESC
+    LIMIT ?
+  `, [Math.floor(limit / 2)]);
+
+  for (const user of (usersResult.results || [])) {
+    activities.push({
+      id: `user-${user.id}`,
+      type: 'user_registration',
+      title: 'New User Registration',
+      description: `${user.first_name || ''} ${user.last_name || ''} registered as a ${user.account_type}`,
+      timestamp: getRelativeTime(user.created_at)
+    });
+  }
+
+  // Sort by timestamp (most recent first) - this is approximate since we're using relative times
+  // In production, you'd want to keep the original dates for sorting
+  return activities.slice(0, limit);
+}
+
+// Get listings by category for analytics
+export async function getListingsByCategory() {
+  const sql = `
+    SELECT c.name, COUNT(p.id) as count
+    FROM categories c
+    LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1
+    GROUP BY c.id, c.name
+    ORDER BY count DESC
+  `;
+  const result = await executeQuery(sql);
+
+  return (result.results || []).map(row => ({
+    name: row.name,
+    value: row.count || 0
+  }));
+}

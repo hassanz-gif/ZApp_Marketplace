@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Icon from '@/components/ui/AppIcon';
 import MetricsCard from './MetricsCard';
@@ -10,15 +10,63 @@ import ListingModerationQueue from './ListingModerationQueue';
 import DisputeResolutionPanel from './DisputeResolutionPanel';
 import PlatformAnalyticsChart from './PlatformAnalyticsChart';
 
-export default function AdminDashboardInteractive({ 
-  metricsData, 
-  recentActivities, 
-  usersData, 
-  listingsData, 
+export default function AdminDashboardInteractive({
+  metricsData: initialMetrics,
+  recentActivities: initialActivities,
+  usersData: initialUsers,
+  listingsData,
   disputesData,
-  analyticsData 
+  analyticsData: initialAnalytics
 }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [metricsData, setMetricsData] = useState(initialMetrics);
+  const [recentActivities, setRecentActivities] = useState(initialActivities);
+  const [usersData, setUsersData] = useState(initialUsers);
+  const [analyticsData, setAnalyticsData] = useState(initialAnalytics);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real data from API
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        // Fetch stats with activities, users, and analytics
+        const response = await fetch('/api/admin/stats?includeActivities=true&includeUsers=true&includeAnalytics=true');
+        const data = await response.json();
+
+        if (data.success) {
+          // Update metrics if we got data
+          if (data.metricsData && data.metricsData.length > 0) {
+            setMetricsData(data.metricsData);
+          }
+
+          // Update activities if we got data
+          if (data.recentActivities && data.recentActivities.length > 0) {
+            setRecentActivities(data.recentActivities);
+          }
+
+          // Update users if we got data
+          if (data.usersData && data.usersData.length > 0) {
+            setUsersData(data.usersData);
+          }
+
+          // Update analytics if we got data
+          if (data.analyticsData) {
+            setAnalyticsData(prev => ({
+              ...prev,
+              categoryDistribution: data.analyticsData.categoryDistribution || prev.categoryDistribution
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+        // Keep using initial data on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'ChartBarIcon' },
@@ -68,6 +116,12 @@ export default function AdminDashboardInteractive({
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            {isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Icon name="ArrowPathIcon" size={24} className="animate-spin text-primary mr-2" />
+                <span className="text-muted-foreground">Loading dashboard data...</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {metricsData?.map((metric) => (
                 <MetricsCard key={metric?.id} {...metric} />

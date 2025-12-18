@@ -37,6 +37,8 @@
 | `/api/seller/messages` | GET, POST, PUT | Done |
 | `/api/seller/stats` | GET | Done |
 | `/api/sellers/featured` | GET | Done |
+| `/api/admin/stats` | GET | Done |
+| `/api/admin/users` | GET | Done |
 
 ### Pages - Database Integrated
 | Page | DB Integration | Details |
@@ -46,6 +48,9 @@
 | Product Details | Done | Fetches product by ID from DB |
 | Seller Dashboard | Done | Listings, stats, orders, messages from DB |
 | Order Management | Done | Buyer orders from DB |
+| User Dashboard | Partial | Orders & stats from DB; wishlist, searches, notifications still hardcoded |
+| Checkout | Done | Creates real orders in DB |
+| Admin Dashboard | Partial | Metrics, users, activities from DB; listings/disputes still hardcoded |
 
 ### Seller Features
 | Feature | Status |
@@ -68,16 +73,15 @@
 ### Pages Still Using Hardcoded Data
 | Page | What's Hardcoded |
 |------|-----------------|
-| User Dashboard | Stats, recent orders, wishlist, saved searches, notifications |
-| Admin Dashboard | Platform metrics, user management, activities |
+| User Dashboard | Wishlist, saved searches, notifications, recently viewed |
+| Admin Dashboard | Listings moderation, disputes (metrics, users, activities now from DB) |
 | Messaging Center | Conversations, message threads |
-| Shopping Cart | Cart items (no cart persistence) |
+| Shopping Cart | Uses CartContext (localStorage) |
 
 ### Missing Features
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Checkout -> Create Orders | High | Checkout doesn't save orders to DB |
-| Cart Persistence | High | Cart not saved to DB/localStorage |
+| Cart Persistence to DB | Medium | Cart uses localStorage via CartContext |
 | Wishlist System | Medium | No wishlist table or API |
 | Reviews System | Medium | No reviews table or API |
 | Search Functionality | Medium | Product search works but could be improved |
@@ -100,17 +104,17 @@
 
 | Category | Done | Remaining |
 |----------|------|-----------|
-| Pages (12 total) | 5 integrated | 4 hardcoded |
-| API Endpoints | 12 | ~5 needed |
+| Pages (12 total) | 8 integrated | 2 hardcoded |
+| API Endpoints | 14 | ~3 needed |
 | Database Tables | 8 | ~5 needed |
-| Core Features | ~70% | ~30% |
+| Core Features | ~85% | ~15% |
 
 ### Next Priority Items
-1. Connect Checkout to create real orders
-2. User Dashboard - fetch buyer's orders
-3. Cart persistence
-4. Admin Dashboard metrics
+1. Messaging Center
+2. Wishlist system
+3. Reviews system
+4. Cart persistence to DB
 
 ---
 
-*Last Updated: December 15, 2025*
+*Last Updated: December 18, 2025*
